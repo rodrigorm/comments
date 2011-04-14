@@ -56,7 +56,7 @@ class TestCommentsController extends CommentsController {
 /**
  * Override controller method for testing
  */
-	public public function redirect($url, $status = null, $exit = true) {
+	public function redirect($url, $status = null, $exit = true) {
 		$this->redirectUrl = $url;
 	}
 

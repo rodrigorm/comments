@@ -41,6 +41,7 @@ class CommentableBehavior extends ModelBehavior {
  * @access public
  */
 	public $defaults = array(
+		'commentAlias' => 'Comment',
 		'commentModel' => 'Comments.Comment',
 		'spamField' => 'is_spam',
 		'userModelAlias' => 'UserModel',
@@ -63,7 +64,7 @@ class CommentableBehavior extends ModelBehavior {
 
 		$cfg = $this->settings[$model->alias];
 		$model->bindModel(array('hasMany' => array(
-			'Comment' => array(
+			$cfg['commentAlias'] => array(
 				'className' => $cfg['commentModel'],
 				'foreignKey' => 'foreign_key',
 				'unique' => true,
@@ -75,8 +76,10 @@ class CommentableBehavior extends ModelBehavior {
 				'offset' => '',
 				'exclusive' => '',
 				'finderQuery' => '',
-				'counterQuery' => ''))), false);
-		$model->Comment->bindModel(array('belongsTo' => array(
+				'counterQuery' => ''
+			),
+		)), false);
+		$model->{$cfg['commentAlias']}->bindModel(array('belongsTo' => array(
 			$model->name => array(
 				'className' => $model->name,
 				'foreignKey' => 'foreign_key',
@@ -85,7 +88,7 @@ class CommentableBehavior extends ModelBehavior {
 				'fields' => '',
 				'counterCache' => true,
 				'dependent' => false))), false);
-		$model->Comment->bindModel(array('belongsTo' => array(
+		$model->{$cfg['commentAlias']}->bindModel(array('belongsTo' => array(
 			$cfg['userModelAlias'] => array(
 				'className' => $cfg['userModelClass'],
 				'foreignKey' => 'user_id',
@@ -106,18 +109,19 @@ class CommentableBehavior extends ModelBehavior {
  * @access public
  */
 	public function commentToggleApprove(&$model, $commentId, $options = array()) {
-		$model->Comment->recursive = -1;
-		$data = $model->Comment->read(null, $commentId);
+		$commentAlias = $this->settings[$model->alias]['commentAlias'];
+		$model->{$commentAlias}->recursive = -1;
+		$data = $model->{$commentAlias}->read(null, $commentId);
 		if ($data) {
-			if ($data['Comment']['approved'] == 0) {
-				$data['Comment']['approved'] = 1;
+			if ($data[$commentAlias]['approved'] == 0) {
+				$data[$commentAlias]['approved'] = 1;
 				$direction = 'up';
 			} else {
-				$data['Comment']['approved'] = 0;
+				$data[$commentAlias]['approved'] = 0;
 				$direction = 'down';
 			}
-			if ($model->Comment->save($data, false)) {
-				$this->changeCommentCount($model, $data['Comment']['foreign_key'], $direction);
+			if ($model->{$commentAlias}->save($data, false)) {
+				$this->changeCommentCount($model, $data[$commentAlias]['foreign_key'], $direction);
 				return true;
 			}
 		}
@@ -133,7 +137,8 @@ class CommentableBehavior extends ModelBehavior {
  * @access public
  */
 	public function commentDelete(&$model, $commentId = null) {
-		return $model->Comment->delete($commentId);
+		$commentAlias = $this->settings[$model->alias]['commentAlias'];
+		return $model->{$commentAlias}->delete($commentId);
 	}
 
 /**
@@ -146,34 +151,36 @@ class CommentableBehavior extends ModelBehavior {
  * @access public
  */
 	public function commentAdd(&$model, $commentId = null, $options = array()) {
+		$commentAlias = $this->settings[$model->alias]['commentAlias'];
+
 		$options = array_merge(array('defaultTitle' => '', 'modelId' => null, 'userId' => null, 'data' => array(), 'permalink' => ''), (array)$options);
 		extract($options);
 		if (isset($options['permalink'])) {
-			$model->Comment->permalink = $options['permalink'];
+			$model->{$commentAlias}->permalink = $options['permalink'];
 		}
 
-		$model->Comment->recursive = -1;
+		$model->{$commentAlias}->recursive = -1;
 		if (!empty($commentId)) {
-			$model->Comment->id = $commentId;
-			if (!$model->Comment->find('count', array('conditions' => array(
-				'Comment.id' => $commentId,
-				'Comment.approved' => true,
-				'Comment.foreign_key' => $modelId)))) {
+			$model->{$commentAlias}->id = $commentId;
+			if (!$model->{$commentAlias}->find('count', array('conditions' => array(
+				$commentAlias . '.id' => $commentId,
+				$commentAlias . '.approved' => true,
+				$commentAlias . '.foreign_key' => $modelId)))) {
 				throw new BlackHoleException(__d('comments', 'Unallowed comment id', true));
 			}
 		}
 
 		if (!empty($data)) {
-			$data['Comment']['user_id'] = $userId;
-			$data['Comment']['model'] = $modelName;
-			if (!isset($data['Comment']['foreign_key'])) {
-				$data['Comment']['foreign_key'] = $modelId;
+			$data[$commentAlias]['user_id'] = $userId;
+			$data[$commentAlias]['model'] = $modelName;
+			if (!isset($data[$commentAlias]['foreign_key'])) {
+				$data[$commentAlias]['foreign_key'] = $modelId;
 			}
-			if (!isset($data['Comment']['parent_id'])) {
-				$data['Comment']['parent_id'] = $commentId;
+			if (!isset($data[$commentAlias]['parent_id'])) {
+				$data[$commentAlias]['parent_id'] = $commentId;
 			}
-			if (empty($data['Comment']['title'])) {
-				$data['Comment']['title'] = $defaultTitle;
+			if (empty($data[$commentAlias]['title'])) {
+				$data[$commentAlias]['title'] = $defaultTitle;
 			}
 
 			if (!empty($data['Other'])) {
@@ -184,27 +191,23 @@ class CommentableBehavior extends ModelBehavior {
 				}
 			}
 
-			$model->Comment->create($data);
+			$model->{$commentAlias}->create($data);
 
-			if ($model->Comment->Behaviors->enabled('Tree')) {
-				if (isset($data['Comment']['foreign_key'])) {
-					$fk = $data['Comment']['foreign_key'];
+			if ($model->{$commentAlias}->Behaviors->enabled('Tree')) {
+				if (isset($data[$commentAlias]['foreign_key'])) {
+					$fk = $data[$commentAlias]['foreign_key'];
 				} elseif (isset($data['foreign_key'])) {
 					$fk = $data['foreign_key'];
 				} else {
 					$fk = null;
 				}
-				$model->Comment->Behaviors->attach('Tree', array('scope' => array('Comment.foreign_key' => $fk)));
+				$model->{$commentAlias}->Behaviors->attach('Tree', array('scope' => array($commentAlias . '.foreign_key' => $fk)));
 			}
 
-			if ($model->Comment->save()) {
-				$id = $model->Comment->id;
-				// $spamField = $this->settings[$model->alias]['spamField'];
-				// if ($model->Comment->hasField($spamField)) {
-					// $data['Comment.'][$spamField];
-				// }
+			if ($model->{$commentAlias}->save()) {
+				$id = $model->{$commentAlias}->id;
 
-				if (!isset($data['Comment']['approved']) || $data['Comment']['approved'] == true) {
+				if (!isset($data[$commentAlias]['approved']) || $data[$commentAlias]['approved'] == true) {
 					$this->changeCommentCount($model, $modelId);
 				}
 				return $id;
@@ -252,17 +255,19 @@ class CommentableBehavior extends ModelBehavior {
  * @access public
  */
 	public function commentBeforeFind(&$model, $options) {
+		$commentAlias = $this->settings[$model->alias]['commentAlias'];
+
 		$options = array_merge(array('userModel' => $this->settings[$model->alias]['userModelAlias'], 'userData' => null, 'isAdmin' => false), (array)$options);
 		extract($options);
 
 		$model->Behaviors->detach('Containable');
-		$model->Comment->Behaviors->detach('Containable');
+		$model->{$commentAlias}->Behaviors->detach('Containable');
 		$unbind = array();
 
 		foreach (array('belongsTo', 'hasOne', 'hasMany', 'hasAndBelongsToMany') as $assocType) {
-			if (!empty($model->Comment->{$assocType})) {
+			if (!empty($model->{$commentAlias}->{$assocType})) {
 				$unbind[$assocType] = array();
-				foreach ($model->Comment->{$assocType} as $key => $assocConfig) {
+				foreach ($model->{$commentAlias}->{$assocType} as $key => $assocConfig) {
 					if (!in_array($key, array($userModel, $model->name))) {
 						$unbind[$assocType][] = $key;
 					}
@@ -271,25 +276,25 @@ class CommentableBehavior extends ModelBehavior {
 		}
 
 		if (!empty($unbind)) {
-			$model->Comment->unbindModel($unbind, false);
+			$model->{$commentAlias}->unbindModel($unbind, false);
 		}
 
-		$model->Comment->belongsTo[$model->alias]['fields'] = array('id');
-		$model->Comment->belongsTo[$userModel]['fields'] = array('id', $model->Comment->{$userModel}->displayField, 'slug');
-		$conditions = array('Comment.approved' => 1);
+		$model->{$commentAlias}->belongsTo[$model->alias]['fields'] = array('id');
+		$model->{$commentAlias}->belongsTo[$userModel]['fields'] = array('id', $model->{$commentAlias}->{$userModel}->displayField, 'slug');
+		$conditions = array($commentAlias . '.approved' => 1);
 		if (isset($id)) {
 			$conditions[$model->alias . '.' . $model->primaryKey] = $id;
 		}
 
 		if ($isAdmin) {
-			unset($conditions['Comment.approved']);
+			unset($conditions[$commentAlias . '.approved']);
 		}
 
-		$model->Comment->recursive = 0;
+		$model->{$commentAlias}->recursive = 0;
 		$spamField = $this->settings[$model->alias]['spamField'];
 
-		if ($model->Comment->hasField($spamField)) {
-			$conditions['Comment.' . $spamField] = $this->settings[$model->alias]['cleanValues'];
+		if ($model->{$commentAlias}->hasField($spamField)) {
+			$conditions[$commentAlias . '.' . $spamField] = $this->settings[$model->alias]['cleanValues'];
 		}
 		return $conditions;
 	}
