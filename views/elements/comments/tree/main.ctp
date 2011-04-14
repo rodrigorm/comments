@@ -32,7 +32,7 @@
 			echo $commentWidget->element('paginator');
 			echo $tree->generate(${$viewComments}, array(
 				'callback' => array(&$commentWidget, 'treeCallback'),
-				'model' => 'Comment',
+				'model' => $assocName,
 				'class' => 'tree-block'));
 		endif;
 	?>

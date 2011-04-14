@@ -318,16 +318,16 @@ class CommentsComponent extends Object {
  */
 	public function callback_fetchDataTree($options) {
 		$conditions = $this->_prepareModel($options);
-		$order = array('Comment.lft' => 'asc');
+		$order = array($this->assocName . '.lft' => 'asc');
 		$limit = 10;
-		$this->Controller->paginate['Comment'] = compact('order', 'conditions', 'limit');
-		$data = $this->Controller->paginate('Comment');
+		$this->Controller->paginate[$this->assocName] = compact('order', 'conditions', 'limit');
+		$data = $this->Controller->paginate($this->assocName);
 		$parents = array();
-		if (isset($data[0]['Comment'])) {
-			$rec = $data[0]['Comment'];
-			$conditions[] = array('Comment.lft <' => $rec['lft']);
-			$conditions[] = array('Comment.rght >' => $rec['rght']);
-			$parents = $this->Controller->{$this->modelName}->Comment->find('all', compact('conditions', 'order'));
+		if (isset($data[0][$this->assocName])) {
+			$rec = $data[0][$this->assocName];
+			$conditions[] = array($this->assocName . '.lft <' => $rec['lft']);
+			$conditions[] = array($this->assocName . '.rght >' => $rec['rght']);
+			$parents = $this->Controller->{$this->modelName}->{$this->assocName}->find('all', compact('conditions', 'order'));
 		}
 		return array_merge($parents, $data);
 	}
@@ -350,18 +350,25 @@ class CommentsComponent extends Object {
  * @return array
  */
 	public function callback_fetchDataThreaded($options) {
-		$Comment =& $this->Controller->{$this->modelName}->Comment;
+		$Comment =& $this->Controller->{$this->modelName}->{$this->assocName};
 		$conditions = $this->_prepareModel($options);
 		$fields = array(
-			'Comment.id', 'Comment.user_id', 'Comment.foreign_key', 'Comment.parent_id', 'Comment.approved',
-			'Comment.title', 'Comment.body', 'Comment.slug', 'Comment.created',
+			$this->assocName . '.id',
+			$this->assocName . '.user_id',
+			$this->assocName . '.foreign_key',
+			$this->assocName . '.parent_id',
+			$this->assocName . '.approved',
+			$this->assocName . '.title',
+			$this->assocName . '.body',
+			$this->assocName . '.slug',
+			$this->assocName . '.created',
 			$this->modelName . '.id',
 			$this->userModel . '.id',
 			$this->userModel . '.' . $Comment->{$this->userModel}->displayField,
 			$this->userModel . '.slug');
 		$order = array(
-			'Comment.parent_id' => 'asc',
-			'Comment.created' => 'asc');
+			$this->assocName . '.parent_id' => 'asc',
+			$this->assocName . '.created' => 'asc');
 		return $Comment->find('threaded', compact('conditions', 'fields', 'order'));
 	}
 
@@ -398,7 +405,8 @@ class CommentsComponent extends Object {
 		$this->commentParams = array_merge($this->commentParams, array(
 			'viewComments' => $this->viewComments,
 			'modelName' => $this->modelName,
-			'userModel' => $this->userModel));
+			'userModel' => $this->userModel,
+			'assocName' => $this->assocName));
 		$allowedParams = array('comment', 'comment_action', 'quote');
 		foreach ($allowedParams as $param) {
 			if (isset($this->Controller->passedArgs[$param])) {
@@ -416,10 +424,10 @@ class CommentsComponent extends Object {
  */
 	public function callback_add($modelId, $commentId, $displayType, $data = array()) {
 		if (!empty($this->Controller->data)) {
-			if (!empty($this->Controller->data['Comment']['title'])) {
-				$data['Comment']['title'] = $this->cleanHtml($this->Controller->data['Comment']['title']);
+			if (!empty($this->Controller->data[$this->assocName]['title'])) {
+				$data[$this->assocName]['title'] = $this->cleanHtml($this->Controller->data[$this->assocName]['title']);
 			}
-			$data['Comment']['body'] = $this->cleanHtml($this->Controller->data['Comment']['body']);
+			$data[$this->assocName]['body'] = $this->cleanHtml($this->Controller->data[$this->assocName]['body']);
 			$modelName = $this->Controller->{$this->modelName}->name;
 			if (!empty($this->Controller->{$this->modelName}->fullName)) {
 				$modelName = $this->Controller->{$this->modelName}->fullName;
@@ -463,7 +471,7 @@ class CommentsComponent extends Object {
 				if (!empty($this->Controller->passedArgs['comment'])) {
 					$message = $this->_call('getFormatedComment', array($this->Controller->passedArgs['comment']));;
 					if (!empty($message)) {
-						$this->Controller->data['Comment']['body'] = $message;
+						$this->Controller->data[$this->assocName]['body'] = $message;
 					}
 				}
 			}
@@ -477,16 +485,16 @@ class CommentsComponent extends Object {
  * @return string
  */
 	public function callback_getFormatedComment($commentId) {
-		$comment = $this->Controller->{$this->modelName}->Comment->find('first', array(
+		$comment = $this->Controller->{$this->modelName}->{$this->assocName}->find('first', array(
 			'recursive' => -1,
-			'fields' => array('Comment.body', 'Comment.title'),
-			'conditions' => array('Comment.id' => $commentId)));
+			'fields' => array($this->assocName . '.body', $this->assocName . '.title'),
+			'conditions' => array($this->assocName . '.id' => $commentId)));
 		if (!empty($comment)) {
 
 		} else {
 			return null;
 		}
-		return "[quote]\n" . $comment['Comment']['body'] . "\n[end quote]";
+		return "[quote]\n" . $comment[$this->assocName]['body'] . "\n[end quote]";
 	}
 
 /**

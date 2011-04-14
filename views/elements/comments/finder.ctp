@@ -10,7 +10,7 @@
  */
 ?>
 <h3><?php __d('comments', 'Filter comments'); ?></h3>
-<?php echo $form->create('Comment', array(
+<?php echo $form->create($assocName, array(
 	'url' => array('plugin' => 'comments', 'admin' => true, 'controller' => 'comments', 'action' => 'index'),
 	'class' => 'finder-form',
 	'id' => 'SearchForm')); ?>

@@ -17,7 +17,7 @@ if ($commentWidget->globalParams['target']) {
 } else {
 	$pager->options(array('url' => $url));
 }
-$paging = $pager->params('Comment');
+$paging = $pager->params($assocName);
 ?>
 
 <?php if (!empty(${$viewComments})): ?>

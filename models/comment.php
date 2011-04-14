@@ -95,9 +95,9 @@ class Comment extends CommentsAppModel {
 	public function process($action, $data) {
 		$message = $addInfo = 	'';
 		if (!empty($action) && $action == 'delete') {
-			$keys = array_keys($data['Comment']);
+			$keys = array_keys($data[$this->alias]);
 			foreach ($keys as $id) {
-				$value = $data['Comment'][$id];
+				$value = $data[$this->alias][$id];
 				if ((is_string($id) && strlen($id) == 36 || is_numeric($id)) && $value) {
 					$result = $this->delete($id);
 					if(!$result) {
@@ -107,19 +107,19 @@ class Comment extends CommentsAppModel {
 			}
 			$message = __d('comments', 'Comments removed.', true) . ' ' . $addInfo;
 		} elseif (!empty($action) && in_array($action, array('spam', 'ham', 'approve', 'disapprove'))) {
-			$keys = array_keys($data['Comment']);
+			$keys = array_keys($data[$this->alias]);
 			foreach ($keys as $id) {
-				$value = $data['Comment'][$id];
+				$value = $data[$this->alias][$id];
 				if ((is_string($id) && strlen($id) == 36 || is_numeric($id)) && $value) {
 					$this->recursive = -1;
 					$comment = $this->read(null, $id);
 					if ($action == 'spam' || $action == 'ham') {
-						$modelName = r('.', '', $comment['Comment']['model']);
+						$modelName = r('.', '', $comment[$this->alias]['model']);
 						if (!isset(${$modelName})) {
-							${$modelName} = ClassRegistry::init($comment['Comment']['model']);
+							${$modelName} = ClassRegistry::init($comment[$this->alias]['model']);
 						}
 						if (method_exists(${$modelName}, 'permalink')) {
-							$this->permalink = ${$modelName}->permalink($comment['Comment']['foreign_key']);
+							$this->permalink = ${$modelName}->permalink($comment[$this->alias]['foreign_key']);
 						} else {
 							$this->permalink = '';
 						}
@@ -280,12 +280,12 @@ class Comment extends CommentsAppModel {
 			'recursive' => -1,
 			'conditions' => array('id' => $id)));
 		
-		if (isset($comment['Comment']['model'])) {
-			$Model = ClassRegistry::init($comment['Comment']['model']);
+		if (isset($comment[$this->alias]['model'])) {
+			$Model = ClassRegistry::init($comment[$this->alias]['model']);
 			if (!empty($Model)) {
 				$result = array(
 					'Model' => $Model,
-					'id' => $comment['Comment']['foreign_key']);
+					'id' => $comment[$this->alias]['foreign_key']);
 			}
 		}
 		return $result;
