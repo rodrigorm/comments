@@ -281,7 +281,10 @@ class CommentableBehavior extends ModelBehavior {
 
 		$model->{$commentAlias}->belongsTo[$model->alias]['fields'] = array('id');
 		$model->{$commentAlias}->belongsTo[$userModel]['fields'] = array('id', $model->{$commentAlias}->{$userModel}->displayField, 'slug');
-		$conditions = array($commentAlias . '.approved' => 1);
+		$conditions = array(
+			$commentAlias . '.approved' => 1,
+			$commentAlias . '.model' => $model->name
+		);
 		if (isset($id)) {
 			$conditions[$model->alias . '.' . $model->primaryKey] = $id;
 		}
