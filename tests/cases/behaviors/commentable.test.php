@@ -226,6 +226,7 @@ class CommentableTest extends CakeTestCase {
 		$result = $this->Model->commentBeforeFind($options);
 		$expected = array(
 			'Comment.approved' => 1,
+			'Comment.model' => 'Article',
 			'Comment.is_spam' => array('clean', 'ham'));
 		$this->assertEqual($result, $expected);
 		
@@ -234,6 +235,7 @@ class CommentableTest extends CakeTestCase {
 			'id' => 1));
 		$result = $this->Model->commentBeforeFind($options);
 		$expected = array(
+			'Comment.model' => 'Article',
 			'Article.id' => 1,
 			'Comment.is_spam' => array('clean', 'ham'));
 		$this->assertEqual($result, $expected);

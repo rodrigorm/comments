@@ -172,7 +172,8 @@ class CommentsComponentTest extends CakeTestCase {
 			'displayType' => 'flat',
 			'viewComments' => 'commentsData',
 			'modelName' => 'Article',
-			'userModel' => 'UserModel'));
+			'userModel' => 'UserModel',
+			'assocName' => 'Comment'));
 	}
 
 /**
@@ -299,7 +300,8 @@ class CommentsComponentTest extends CakeTestCase {
 		$expected = array(
 			'viewComments' => 'commentsData',
 			'modelName' => 'Article',
-			'userModel' => 'UserModel'); 
+			'userModel' => 'UserModel',
+			'assocName' => 'Comment'); 
 		$this->assertEqual($this->Controller->Comments->commentParams, $expected);
 		
 		$this->__setupControllerData();

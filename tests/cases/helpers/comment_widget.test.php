@@ -222,7 +222,8 @@ class CommentWidgetHelperTest extends CakeTestCase {
 			array_merge(
 				$initialParams,
 				array(
-					'viewRecord' => $currArticle['Article']),
+					'viewRecord' => $currArticle['Article'],
+					'viewRecordFull' => $currArticle),
 				$this->View->viewVars['commentParams'],
 				array(
 					'url' => array('article-slug'),
@@ -259,7 +260,8 @@ class CommentWidgetHelperTest extends CakeTestCase {
 		unset($this->View->viewVars['article']);
 		$expectedParams[1] = array_merge($expectedParams[1], array(
 			'url' => array('example-user', 'article-slug'),
-			'viewRecord' => array()));
+			'viewRecord' => array(),
+			'viewRecordFull' => array()));
 		$this->View->expectAt($countElementCall, 'element', $expectedParams);
 		$this->View->setReturnValueAt($countElementCall++, 'element', $expected);
 		$result = $this->CommentWidget->display($options);
