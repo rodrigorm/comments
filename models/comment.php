@@ -55,6 +55,14 @@ class Comment extends CommentsAppModel {
 	public $permalink;
 
 /**
+ * Filter args
+ *
+ * @var array
+ */
+    public $filterArgs = array();
+
+
+/**
  * beforeSave
  *
  * @param boolean $created
@@ -87,7 +95,7 @@ class Comment extends CommentsAppModel {
 
 /**
  * Group operation procession
- * 
+ *
  * @param string $action
  * @param array $data
  * @return boolean Success / Fail
@@ -101,7 +109,7 @@ class Comment extends CommentsAppModel {
 				if ((is_string($id) && strlen($id) == 36 || is_numeric($id)) && $value) {
 					$result = $this->delete($id);
 					if(!$result) {
-						$addInfo = __d('comments', 'Some errors appear during excution.', true);
+						$addInfo = __d('comments', 'Some errors appear during execution.', true);
 					}
 				}
 			}
@@ -132,17 +140,17 @@ class Comment extends CommentsAppModel {
 							$result = $this->markAsSpam($id);
 							break;
 						case 'approve':
-							$result = $this->saveField('approved', 1);
+							$result = $this->approve($id);
 							break;
 						case 'disapprove':
-							$result = $this->saveField('approved', 0);
+							$result = $this->approve($id, false);
 							break;
 					}
 					switch($result) {
 						case false:
 						case 'invalid':
 						case 'error':
-							$addInfo = __d('comments', 'Some errors appear during excution.', true);
+							$addInfo = __d('comments', 'Some errors appear during execution.', true);
 							break;
 					}
 				}
@@ -154,7 +162,7 @@ class Comment extends CommentsAppModel {
 
 /**
  * Increment or decrement the comment count cache on the associated model
- * 
+ *
  * @param mixed $id The id to change count of.
  * @param string $direction 'up' or 'down'
  * @return boolean Success of the update
@@ -169,7 +177,7 @@ class Comment extends CommentsAppModel {
 			$sign = ($direction == 'up') ? '+' : '-';
 			$associated['Model']->recursive = -1;
 			$success = $associated['Model']->updateAll(
-				array('comments' => "comments $sign 1"),
+				array('comments' => $associated['Model']->alias.".comments $sign 1"),
 				array($associated['Model']->alias . '.id' => $associated['id']));
 		}
 		return $success;
@@ -177,7 +185,7 @@ class Comment extends CommentsAppModel {
 
 /**
  * Mark a comment as a spam
- * 
+ *
  * @param string $id Id of the comment to mark as spam, optionnal [defaut: $this->id]
  * @return boolean Success / Fail
  */
@@ -186,7 +194,7 @@ class Comment extends CommentsAppModel {
 		if (is_null($id)) {
 			$id = $this->id;
 		}
-		
+
 		if ($this->changeCount($id, 'down')) {
 			if ($this->__updateSpamType($id, 'spammanual')) {
 				if ($this->Behaviors->enabled('Antispamable')) {
@@ -199,10 +207,10 @@ class Comment extends CommentsAppModel {
 		}
 		return $success;
 	}
-	
+
 /**
  * Mark a comment as a ham
- * 
+ *
  * @param string $id Id of the comment to mark as ham
  * @return boolean Success / Fail
  */
@@ -211,7 +219,7 @@ class Comment extends CommentsAppModel {
 		if (is_null($id)) {
 			$id = $this->id;
 		}
-		
+
 		if ($this->changeCount($id, 'up')) {
 			if ($this->__updateSpamType($id, 'ham')) {
 				if ($this->Behaviors->enabled('Antispamable')) {
@@ -226,10 +234,41 @@ class Comment extends CommentsAppModel {
 	}
 
 /**
+ * Approve/Disapprove a comment
+ *
+ * @param string $id Id of the comment to (dis)approve
+ * @param boolean $approved Should the comment be approved or disapproved
+ * @return boolean Success / Fail
+ */
+	public function approve($id = null, $approved = true) {
+		$success = false;
+		if (!empty($id)) {
+			$this->id = $id;
+		}
+		$comment = $this->read(array($this->alias . '.' . $this->primaryKey, 'approved'));
+
+		if (!empty($comment)) {
+			if($comment[$this->alias]['approved'] == $approved) {
+				$success = true;
+			} else {
+				if ($this->saveField('approved', $approved)) {
+					$success = true;
+					if ($approved) {
+						$this->changeCount($this->id, 'up');
+					} else {
+						$this->changeCount($this->id, 'down');
+					}
+				}
+			}
+		}
+		return $success;
+	}
+
+/**
  * Overrides AppModel::delete() method
  *
  * Automatically decrement comment count of related model
- * 
+ *
  * (non-PHPdoc)
  * @see cake/libs/model/Model#delete($id, $cascade)
  */
@@ -238,7 +277,7 @@ class Comment extends CommentsAppModel {
 		if (is_null($id)) {
 			$id = $this->id;
 		}
-		
+
 		if ($this->changeCount($id, 'down')) {
 			if (parent::delete($id, $cascade)) {
 				$success = true;
@@ -251,7 +290,7 @@ class Comment extends CommentsAppModel {
 
 /**
  * Update the comment spam type
- * 
+ *
  * @param string $id Comment id
  * @param string $newType New spam type for the comment (valid values: cf $isSpamValues)
  * @return boolean Success of the update
@@ -265,14 +304,14 @@ class Comment extends CommentsAppModel {
 		}
 		return $success;
 	}
-	
+
 /**
  * Get the row related to a comment
- * 
+ *
  * @param string $id Comment id
  * @return mixed False if an error occured, an array with the following keys otherwise:
  * 	- Model: Associated model object
- *  - id: Id of the related row 
+ *  - id: Id of the related row
  */
 	private function __getCommentedRow($id) {
 		$result = false;

@@ -60,16 +60,16 @@ class CommentWidgetHelper extends AppHelper {
  * @var string
  */
 	public $globalParams = array();
-	
+
 /**
  * Initialize callback
- * 
+ *
  * @return void
  */
 	public function initialize() {
 		$this->options(array());
 	}
-	
+
 /**
  * Before render Callback
  *
@@ -100,12 +100,13 @@ class CommentWidgetHelper extends AppHelper {
 		$this->globalParams = array_merge(array_merge($this->globalParams, $this->options), (array)$data);
 		if (!empty($this->globalParams['target']) && empty($this->globalParams['ajaxOptions'])) {
 			$this->globalParams['ajaxOptions'] = array(
+				'rel' => 'nofollow',
 				'update' => $this->globalParams['target'],
 				'evalScripts' => true,
-				'before' => 
+				'before' =>
 					$this->Js->get($this->globalParams['target'] . ' .comments')->effect('fadeOut', array('buffer' => false)) .
 					$this->Js->get('#busy-indicator')->effect('show', array('buffer' => false)),
-				'complete' => 
+				'complete' =>
 					$this->Js->get($this->globalParams['target'] . ' .comments')->effect('fadeIn', array('buffer' => false)) .
 					$this->Js->get('#busy-indicator')->effect('hide', array('buffer' => false)),
 			);
@@ -119,8 +120,8 @@ class CommentWidgetHelper extends AppHelper {
  *
  * - `displayType` The primary type of comments you want to display.  Default is flat, and built in types are
  *    flat, threaded and tree.
- * - `subtheme` an optional subtheme to use for rendering the comments, used with `displayType`.  
- *    If your comments type is 'flat' and you use `'theme' => 'mytheme'` in your params. 
+ * - `subtheme` an optional subtheme to use for rendering the comments, used with `displayType`.
+ *    If your comments type is 'flat' and you use `'theme' => 'mytheme'` in your params.
  *   `elements/comments/flat_mytheme` is the directory the helper will look for your elements in.
  *
  * @param array $params Parameters for the comment rendering
@@ -141,14 +142,18 @@ class CommentWidgetHelper extends AppHelper {
 				$theme = 'flat';
 			}
 
-			$url = $this->globalParams['url'] = array();
-			if (isset($View->params['userslug'])) {
-				$url[] = $View->params['userslug'];
-			}
-			if (!empty($View->passedArgs)) {
-				foreach ($View->passedArgs as $key => $value) {
-					if (is_numeric($key)) {
-						$url[] = $value;
+			if (!is_null($this->globalParams['url'])){
+				$url = array();
+			} else {
+				$url = array();
+				if (isset($View->params['userslug'])) {
+					$url[] = $View->params['userslug'];
+				}
+				if (!empty($View->passedArgs)) {
+					foreach ($View->passedArgs as $key => $value) {
+						if (is_numeric($key)) {
+							$url[] = $value;
+						}
 					}
 				}
 			}
@@ -172,7 +177,6 @@ class CommentWidgetHelper extends AppHelper {
 			$allowAddByAuth = ($this->globalParams['allowAnonymousComment'] || !empty($View->viewVars['isAuthorized']));
 
 			$params = array_merge($params, compact('url', 'allowAddByAuth', 'allowAddByModel', 'adminRoute', 'isAddMode', 'viewRecord', 'viewRecordFull', 'theme'));
-
 			$this->globalParams = Set::merge($this->globalParams, $params);
 			$result = $this->element('main');
 		}
@@ -189,7 +193,7 @@ class CommentWidgetHelper extends AppHelper {
  */
 	public function link($title, $url='', $options = array()) {
 		if ($this->globalParams['target']) {
-			return $this->Js->link($title, $this->prepareUrl($url), array_merge($options, $this->globalParams['ajaxOptions']));
+			return $this->Js->link($title, $this->prepareUrl($url), array_merge($this->globalParams['ajaxOptions'], $options));
 		} else {
 			return $this->Html->link($title, $url, $options);
 		}
@@ -226,7 +230,7 @@ class CommentWidgetHelper extends AppHelper {
 		}
 		$params = Set::merge($this->globalParams, $params);
 		$response = $View->element($name, $params);
-		if (is_null($response) || substr($response, 0, 10) === 'Not Found:') {
+		if (is_null($response) || strpos($response, 'Not Found:') !== false) {
 			$response = $View->element($name, array_merge($params, array('plugin' => 'comments')));
 		}
 		return $response;
@@ -255,3 +259,4 @@ class CommentWidgetHelper extends AppHelper {
 		}
 	}
 }
+

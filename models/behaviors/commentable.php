@@ -30,7 +30,6 @@ class CommentableBehavior extends ModelBehavior {
  * Settings array
  *
  * @var array
- * @access public
  */
 	public $settings = array();
 
@@ -38,7 +37,6 @@ class CommentableBehavior extends ModelBehavior {
  * Default settings
  *
  * @var array
- * @access public
  */
 	public $defaults = array(
 		'commentAlias' => 'Comment',
@@ -54,9 +52,8 @@ class CommentableBehavior extends ModelBehavior {
  *
  * @param AppModel $model
  * @param array $settings
- * @access public
  */
-	public function setup(&$model, $settings = array()) {
+	public function setup(Model $model, $settings = array()) {
 		if (!isset($this->settings[$model->alias])) {
 			$this->settings[$model->alias] = $this->defaults;
 		}
@@ -80,7 +77,7 @@ class CommentableBehavior extends ModelBehavior {
 			),
 		)), false);
 		$model->{$cfg['commentAlias']}->bindModel(array('belongsTo' => array(
-			$model->name => array(
+			$model->alias => array(
 				'className' => $model->name,
 				'foreignKey' => 'foreign_key',
 				'unique' => true,
@@ -106,9 +103,8 @@ class CommentableBehavior extends ModelBehavior {
  * @param mixed commentId
  * @param array $options
  * @return boolean
- * @access public
  */
-	public function commentToggleApprove(&$model, $commentId, $options = array()) {
+	public function commentToggleApprove(Model $model, $commentId, $options = array()) {
 		$commentAlias = $this->settings[$model->alias]['commentAlias'];
 		$model->{$commentAlias}->recursive = -1;
 		$data = $model->{$commentAlias}->read(null, $commentId);
@@ -134,9 +130,8 @@ class CommentableBehavior extends ModelBehavior {
  * @param AppModel $model
  * @param mixed commentId
  * @return boolean
- * @access public
  */
-	public function commentDelete(&$model, $commentId = null) {
+	public function commentDelete(Model $model, $commentId = null) {
 		$commentAlias = $this->settings[$model->alias]['commentAlias'];
 		return $model->{$commentAlias}->delete($commentId);
 	}
@@ -148,9 +143,8 @@ class CommentableBehavior extends ModelBehavior {
  * @param mixed $commentId parent comment id, 0 for none
  * @param array $options extra information and comment statistics
  * @return boolean
- * @access public
  */
-	public function commentAdd(&$model, $commentId = null, $options = array()) {
+	public function commentAdd(Model $model, $commentId = null, $options = array()) {
 		$commentAlias = $this->settings[$model->alias]['commentAlias'];
 
 		$options = array_merge(array('defaultTitle' => '', 'modelId' => null, 'userId' => null, 'data' => array(), 'permalink' => ''), (array)$options);
@@ -191,6 +185,12 @@ class CommentableBehavior extends ModelBehavior {
 				}
 			}
 
+			if (method_exists($model, 'beforeComment')) {
+				if (!$model->beforeComment(&$data)) {
+					return false;
+				}
+			}
+
 			$model->{$commentAlias}->create($data);
 
 			if ($model->{$commentAlias}->Behaviors->enabled('Tree')) {
@@ -206,9 +206,16 @@ class CommentableBehavior extends ModelBehavior {
 
 			if ($model->{$commentAlias}->save()) {
 				$id = $model->{$commentAlias}->id;
+				$data[$commentAlias]['id'] = $id;
+				$model->{$commentAlias}->data[$commentAlias]['id'] = $id;
 
 				if (!isset($data[$commentAlias]['approved']) || $data[$commentAlias]['approved'] == true) {
 					$this->changeCommentCount($model, $modelId);
+				}
+				if (method_exists($model, 'afterComment')) {
+					if (!$model->afterComment($data)) {
+						return false;
+					}
 				}
 				return $id;
 			} else {
@@ -224,10 +231,9 @@ class CommentableBehavior extends ModelBehavior {
  * @param Object $model Model to change count of
  * @param mixed $id The id to change count of
  * @param string $direction 'up' or 'down'
- * @access public
  * @return null
  */
-	public function changeCommentCount(&$model, $id = null, $direction = 'up') {
+	public function changeCommentCount(Model $model, $id = null, $direction = 'up') {
 		if ($model->hasField('comments')) {
 			if ($direction == 'up') {
 				$direction = '+ 1';
@@ -240,7 +246,7 @@ class CommentableBehavior extends ModelBehavior {
 			$model->id = $id;
 			if (!is_null($direction) && $model->exists(true)) {
 				return $model->updateAll(
-					array($model->alias . '.comments' => 'comments ' . $direction),
+					array($model->alias . '.comments' => $model->alias . '.comments ' . $direction),
 					array($model->alias . '.id' => $id));
 			}
 		}
@@ -252,23 +258,26 @@ class CommentableBehavior extends ModelBehavior {
  *
  * @param array $options
  * @return boolean
- * @access public
  */
-	public function commentBeforeFind(&$model, $options) {
+	public function commentBeforeFind(Model $model, $options) {
 		$commentAlias = $this->settings[$model->alias]['commentAlias'];
 
 		$options = array_merge(array('userModel' => $this->settings[$model->alias]['userModelAlias'], 'userData' => null, 'isAdmin' => false), (array)$options);
 		extract($options);
 
-		$model->Behaviors->detach('Containable');
-		$model->{$commentAlias}->Behaviors->detach('Containable');
+		$model->Behaviors->disable('Containable');
+		$model->{$commentAlias}->Behaviors->disable('Containable');
 		$unbind = array();
 
 		foreach (array('belongsTo', 'hasOne', 'hasMany', 'hasAndBelongsToMany') as $assocType) {
 			if (!empty($model->{$commentAlias}->{$assocType})) {
 				$unbind[$assocType] = array();
 				foreach ($model->{$commentAlias}->{$assocType} as $key => $assocConfig) {
-					if (!in_array($key, array($userModel, $model->name))) {
+					$keep = false;
+					if (!empty($options['keep']) && in_array($key, $options['keep'])) {
+						$keep = true;
+					}
+					if (!in_array($key, array($userModel, $model->alias)) && !$keep) {
 						$unbind[$assocType][] = $key;
 					}
 				}
@@ -287,6 +296,7 @@ class CommentableBehavior extends ModelBehavior {
 		);
 		if (isset($id)) {
 			$conditions[$model->alias . '.' . $model->primaryKey] = $id;
+			$conditions[$model->{$commentAlias}->alias . '.model'] = $model->alias;
 		}
 
 		if ($isAdmin) {
@@ -299,7 +309,11 @@ class CommentableBehavior extends ModelBehavior {
 		if ($model->{$commentAlias}->hasField($spamField)) {
 			$conditions[$commentAlias . '.' . $spamField] = $this->settings[$model->alias]['cleanValues'];
 		}
-		return $conditions;
+		$model->Behaviors->enable('Containable');
+		$model->{$commentAlias}->Behaviors->enable('Containable');
+
+		return array('conditions' => $conditions);
 	}
 
 }
+

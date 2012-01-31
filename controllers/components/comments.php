@@ -176,9 +176,7 @@ class CommentsComponent extends Object {
 	public $allowAnonymousComment = false;
 
 /**
- * Flag to allow anonymous user make comments
- *
- * Customizable in beforeFilter()
+ * Named params used internally by the component
  *
  * @var array
  */
@@ -198,6 +196,7 @@ class CommentsComponent extends Object {
 		}
 		$this->Controller = $controller;
 		$this->modelName = $controller->modelClass;
+		$this->modelAlias = $controller->{$this->modelName}->alias;
 		$this->viewVariable = Inflector::variable($this->modelName);
 		$controller->helpers = array_merge($controller->helpers, array('Comments.CommentWidget', 'Time', 'Comments.Cleaner', 'Comments.Tree'));
 
@@ -291,11 +290,11 @@ class CommentsComponent extends Object {
 		}
 
 		$primaryKey = $this->Controller->{$this->modelName}->primaryKey;
-		if (empty($this->Controller->viewVars[$this->viewVariable][$this->modelName][$primaryKey])) {
+		if (empty($this->Controller->viewVars[$this->viewVariable][$this->Controller->{$this->modelName}->alias][$primaryKey])) {
 			throw new Exception('CommentsComponent: missing view variable ' . $this->viewVariable . ' or value for primary key ' . $primaryKey . ' of model ' . $this->modelName);
 		}
 
-		$id = $this->Controller->viewVars[$this->viewVariable][$this->modelName][$primaryKey];
+		$id = $this->Controller->viewVars[$this->viewVariable][$this->Controller->{$this->modelName}->alias][$primaryKey];
 		$options = compact('displayType', 'id');
 		if ($processActions) {
 			$this->_processActions($options);
@@ -317,17 +316,19 @@ class CommentsComponent extends Object {
  * @return array
  */
 	public function callback_fetchDataTree($options) {
-		$conditions = $this->_prepareModel($options);
-		$order = array($this->assocName . '.lft' => 'asc');
-		$limit = 10;
-		$this->Controller->paginate[$this->assocName] = compact('order', 'conditions', 'limit');
-		$data = $this->Controller->paginate($this->assocName);
+		$settings = $this->_prepareModel($options);
+		$settings += array('order' => array($this->assocName . '.lft' => 'asc'));
+		$paginate = $settings;
+		$paginate['limit'] = 10;
+		$overloadPaginate = !empty($this->Controller->paginate[$this->assocName]) ? $this->Controller->paginate[$this->assocName] : array();		
+		$this->Controller->paginate[$this->assocName] = array_merge($paginate, $overloadPaginate); 
+		$data = $this->Controller->paginate($this->Controller->{$this->modelName}->{$this->assocName});
 		$parents = array();
 		if (isset($data[0][$this->assocName])) {
 			$rec = $data[0][$this->assocName];
-			$conditions[] = array($this->assocName . '.lft <' => $rec['lft']);
-			$conditions[] = array($this->assocName . '.rght >' => $rec['rght']);
-			$parents = $this->Controller->{$this->modelName}->{$this->assocName}->find('all', compact('conditions', 'order'));
+			$settings['conditions'][] = array($this->assocName . '.lft <' => $rec['lft']);
+			$settings['conditions'][] = array($this->assocName . '.rght >' => $rec['rght']);
+			$parents = $this->Controller->{$this->modelName}->{$this->assocName}->find('all', $settings);
 		}
 		return array_merge($parents, $data);
 	}
@@ -339,8 +340,10 @@ class CommentsComponent extends Object {
  * @return array
  */
 	public function callback_fetchDataFlat($options) {
-		$conditions = $this->_prepareModel($options);
-		return $this->Controller->paginate($this->assocName, $conditions);
+		$paginate = $this->_prepareModel($options);
+		$overloadPaginate = !empty($this->Controller->paginate['Comment']) ? $this->Controller->paginate['Comment'] : array();		
+		$this->Controller->paginate['Comment'] = array_merge($paginate, $overloadPaginate); 
+		return $this->Controller->paginate($this->Controller->{$this->modelName}->Comment);
 	}
 
 /**
@@ -351,25 +354,19 @@ class CommentsComponent extends Object {
  */
 	public function callback_fetchDataThreaded($options) {
 		$Comment =& $this->Controller->{$this->modelName}->{$this->assocName};
-		$conditions = $this->_prepareModel($options);
-		$fields = array(
-			$this->assocName . '.id',
-			$this->assocName . '.user_id',
-			$this->assocName . '.foreign_key',
-			$this->assocName . '.parent_id',
-			$this->assocName . '.approved',
-			$this->assocName . '.title',
-			$this->assocName . '.body',
-			$this->assocName . '.slug',
-			$this->assocName . '.created',
-			$this->modelName . '.id',
+		$settings = $this->_prepareModel($options);
+		$settings['fields'] = array(
+			$this->assocName . '.author_email', $this->assocName . '.author_name', $this->assocName . '.author_url',
+			$this->assocName . '.id', $this->assocName . '.user_id', $this->assocName . '.foreign_key', $this->assocName . '.parent_id', $this->assocName . '.approved',
+			$this->assocName . '.title', $this->assocName . '.body', $this->assocName . '.slug', $this->assocName . '.created',
+			$this->Controller->{$this->modelName}->alias . '.id',
 			$this->userModel . '.id',
 			$this->userModel . '.' . $Comment->{$this->userModel}->displayField,
 			$this->userModel . '.slug');
-		$order = array(
+		$settings += array('order' => array(
 			$this->assocName . '.parent_id' => 'asc',
-			$this->assocName . '.created' => 'asc');
-		return $Comment->find('threaded', compact('conditions', 'fields', 'order'));
+			$this->assocName . '.created' => 'asc'));
+		return $Comment->find('threaded', $settings);
 	}
 
 /**
@@ -404,7 +401,7 @@ class CommentsComponent extends Object {
 	public function callback_prepareParams() {
 		$this->commentParams = array_merge($this->commentParams, array(
 			'viewComments' => $this->viewComments,
-			'modelName' => $this->modelName,
+			'modelName' => $this->modelAlias,
 			'userModel' => $this->userModel,
 			'assocName' => $this->assocName));
 		$allowedParams = array('comment', 'comment_action', 'quote');
@@ -428,7 +425,7 @@ class CommentsComponent extends Object {
 				$data[$this->assocName]['title'] = $this->cleanHtml($this->Controller->data[$this->assocName]['title']);
 			}
 			$data[$this->assocName]['body'] = $this->cleanHtml($this->Controller->data[$this->assocName]['body']);
-			$modelName = $this->Controller->{$this->modelName}->name;
+			$modelName = $this->Controller->{$this->modelName}->alias;
 			if (!empty($this->Controller->{$this->modelName}->fullName)) {
 				$modelName = $this->Controller->{$this->modelName}->fullName;
 			}
@@ -502,6 +499,7 @@ class CommentsComponent extends Object {
  *
  * @param string $modelId
  * @param string $commentId
+ * @return void
  */
 	public function callback_toggleApprove($modelId, $commentId) {
 		if (!isset($this->Controller->passedArgs['comment_action'])
@@ -547,20 +545,18 @@ class CommentsComponent extends Object {
 
 /**
  * Redirect
+ * Redirects the user to the wanted action by persisting passed args excepted
+ * the ones used internally by the component
  *
  * @param array $urlBase
  * @return void
  */
 	public function redirect($urlBase = array()) {
 		$isAjax = isset($this->Controller->params['isAjax']) ? $this->Controller->params['isAjax'] : false;
-		$url = array();
-		foreach ($this->Controller->passedArgs as $key => $value) {
-			if (is_numeric($key)) {
-				$url[] = $value;
-			}
-		}
 
-		$url = array_merge($url, $urlBase);
+		$url = array_merge(
+			array_diff_key($this->Controller->passedArgs, array_flip($this->_supportNamedParams)),
+			$urlBase);
 		if ($isAjax) {
 			$this->Controller->set('redirect', $url);
 		} else {
@@ -645,10 +641,12 @@ class CommentsComponent extends Object {
 					$this->_call(Inflector::variable($commentAction), array($id, $this->Controller->passedArgs['comment']));
 				} else {
 					Configure::write('Comment.action', 'add');
-					$this->_call('add', array($id, $this->Controller->passedArgs['comment'], $displayType));
+					$parent = empty($this->Controller->passedArgs['comment']) ? null : $this->Controller->passedArgs['comment'];
+					$this->_call('add', array($id, $parent, $displayType));
 				}
 			} else {
-				return $this->Controller->blackHole('CommentsComponent: user should be logged in for working with comments');
+				$this->Controller->Session->write('Auth.redirect', $this->Controller->params['url']['url']);
+				$this->Controller->redirect($this->Controller->Auth->loginAction);
 			}
 		}
 	}
@@ -666,3 +664,4 @@ class CommentsComponent extends Object {
 		return $cleaner->clean($text, $settings);
 	}
 }
+
