@@ -75,14 +75,13 @@ class CommentWidgetHelper extends AppHelper {
  *
  * @return void
  */
-	public function beforeRender() {
-		parent::beforeRender();
-		$View = $this->__view();
+	public function beforeRender($viewFile) {
+		parent::beforeRender($viewFile);
 
-		$this->enabled = !empty($View->viewVars['commentParams']);
+		$this->enabled = !empty($this->_View->viewVars['commentParams']);
 		if ($this->enabled) {
 			foreach ($this->__passedParams as $param) {
-				if (empty($View->viewVars['commentParams'][$param])) {
+				if (empty($this->_View->viewVars['commentParams'][$param])) {
 					$this->enabled = false;
 					break;
 				}
@@ -130,9 +129,7 @@ class CommentWidgetHelper extends AppHelper {
 	public function display($params = array()) {
 		$result = '';
 		if ($this->enabled) {
-			$View = $this->__view();
-
-			$params = Set::merge($View->viewVars['commentParams'], $params);
+			$params = Set::merge($this->_View->viewVars['commentParams'], $params);
 			if (isset($params['displayType'])) {
 				$theme = $params['displayType'];
 				if (isset($params['subtheme'])) {
@@ -146,11 +143,11 @@ class CommentWidgetHelper extends AppHelper {
 				$url = array();
 			} else {
 				$url = array();
-				if (isset($View->params['userslug'])) {
-					$url[] = $View->params['userslug'];
+				if (isset($this->_View->request->params['userslug'])) {
+					$url[] = $this->_View->request->params['userslug'];
 				}
-				if (!empty($View->passedArgs)) {
-					foreach ($View->passedArgs as $key => $value) {
+				if (!empty($this->_View->passedArgs)) {
+					foreach ($this->_View->passedArgs as $key => $value) {
 						if (is_numeric($key)) {
 							$url[] = $value;
 						}
@@ -161,9 +158,9 @@ class CommentWidgetHelper extends AppHelper {
 			$model = $params['modelName'];
 			$viewRecord = $this->globalParams['viewRecord'] = array();
 			$viewRecordFull = $this->globalParams['viewRecordFull'] = array();
-			if (isset($View->viewVars[Inflector::variable($model)][$model])) {
-				$viewRecord = $View->viewVars[Inflector::variable($model)][$model];
-				$viewRecordFull = $View->viewVars[Inflector::variable($model)];
+			if (isset($this->_View->viewVars[Inflector::variable($model)][$model])) {
+				$viewRecord = $this->_View->viewVars[Inflector::variable($model)][$model];
+				$viewRecordFull = $this->_View->viewVars[Inflector::variable($model)];
 			}
 
 			if (isset($viewRecord['allow_comments'])) {
@@ -174,7 +171,7 @@ class CommentWidgetHelper extends AppHelper {
 			$isAddMode = (isset($params['comment']) && !isset($params['comment_action']));
 			$adminRoute = Configure::read('Routing.admin');
 
-			$allowAddByAuth = ($this->globalParams['allowAnonymousComment'] || !empty($View->viewVars['isAuthorized']));
+			$allowAddByAuth = ($this->globalParams['allowAnonymousComment'] || !empty($this->_View->viewVars['isAuthorized']));
 
 			$params = array_merge($params, compact('url', 'allowAddByAuth', 'allowAddByModel', 'adminRoute', 'isAddMode', 'viewRecord', 'viewRecordFull', 'theme'));
 			$this->globalParams = Set::merge($this->globalParams, $params);
@@ -224,14 +221,13 @@ class CommentWidgetHelper extends AppHelper {
  * @return string, rendered element
  */
 	public function element($name, $params = array()) {
-		$View = $this->__view();
 		if (strpos($name, '/') === false) {
 			$name = 'comments/' . $this->globalParams['theme'] . '/' . $name;
 		}
 		$params = Set::merge($this->globalParams, $params);
-		$response = $View->element($name, $params);
+		$response = $this->_View->element($name, $params);
 		if (is_null($response) || strpos($response, 'Not Found:') !== false) {
-			$response = $View->element($name, array_merge($params, array('plugin' => 'comments')));
+			$response = $this->_View->element($name, array_merge($params, array('plugin' => 'comments')));
 		}
 		return $response;
 	}
@@ -245,18 +241,4 @@ class CommentWidgetHelper extends AppHelper {
 	public function treeCallback($data) {
 		return $this->element('item', array('comment' => $data['data'], 'data' => $data));
 	}
-
-/**
- * Get current view class
- *
- * @return object, View class
- */
-	private function __view() {
-		if (!empty($this->globalParams['viewInstance'])) {
-			return $this->globalParams['viewInstance'];
-		} else {
-			return ClassRegistry::getObject('view');
-		}
-	}
 }
-

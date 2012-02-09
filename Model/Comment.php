@@ -29,9 +29,7 @@ class Comment extends CommentsAppModel {
  *
  * @var string $name
  */
-	public $actsAs = array(
-		'Comments.Sluggable' => array('label' => 'title'),
-		'Tree');
+	public $actsAs = array('Tree');
 
 /**
  * Is spam field possible values

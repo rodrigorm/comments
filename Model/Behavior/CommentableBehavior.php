@@ -57,7 +57,7 @@ class CommentableBehavior extends ModelBehavior {
 		if (!isset($this->settings[$model->alias])) {
 			$this->settings[$model->alias] = $this->defaults;
 		}
-		$this->settings[$model->alias] = am($this->settings[$model->alias], ife(is_array($settings), $settings, array()));
+		$this->settings[$model->alias] = array_merge($this->settings[$model->alias], $settings);
 
 		$cfg = $this->settings[$model->alias];
 		$model->bindModel(array('hasMany' => array(

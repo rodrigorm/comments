@@ -167,7 +167,7 @@ class CommentableTest extends CakeTestCase {
 			$this->Model->commentAdd(1);
 			$this->fail();
 		} catch (BlackHoleException $e) {
-			$this->pass();
+			// $this->pass();
 		}
 
 		// If it's successfull, commentAdd returns the id of the newly created comment

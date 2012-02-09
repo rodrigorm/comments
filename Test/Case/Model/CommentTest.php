@@ -9,8 +9,8 @@
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  */
 
-App::import('Core', 'ModelBehavior');
-Mock::generatePartial('ModelBehavior', 'AntispamableBehavior', array('isSpam', 'setSpam', 'setHam'));
+App::uses('AppModel', 'Model');
+App::uses('ModelBehavior', 'Model');
 
 /**
  * Comment Test Case
@@ -47,7 +47,15 @@ class CommentTest extends CakeTestCase {
 		$this->Comment->bindModel(array(
 			'belongsTo' => array(
 				'Article' => array(
-					'foreignKey' => 'foreign_key'))));
+					'className' => 'AppModel',
+					'foreignKey' => 'foreign_key'
+				)
+			)
+		));
+		$this->Comment->Article = ClassRegistry::init('Article');
+		if (!class_exists('AntispamableBehavior')) {
+			$this->getMock('ModelBehavior', array('isSpam', 'setSpam', 'setHam', 'setup'), array(), 'AntispamableBehavior');
+		}
 	}
 
 /**
@@ -119,23 +127,23 @@ class CommentTest extends CakeTestCase {
  * @return void
  */
 	public function testAfterSave() {
-		$this->Comment->Behaviors->attach('Antispamable');
+		$this->Comment->Behaviors->load('Antispamable');
 		$Antispamable = $this->Comment->Behaviors->Antispamable;
 		$isSpamCallCount = 0;
 		
 		$this->Comment->id = 1;
-		$Antispamable->setReturnValueAt($isSpamCallCount++, 'isSpam', true);
+		$Antispamable->expects($this->at($isSpamCallCount++))->method('isSpam')->will($this->returnValue(true));
 		$this->Comment->afterSave(true);
 		$this->assertEqual($this->Comment->field('is_spam'), 'spam');
 		$this->Comment->Article->id = 1;
 		$this->assertEqual($this->Comment->Article->field('comments'), '1');
 		
-		$Antispamable->setReturnValueAt($isSpamCallCount++, 'isSpam', false);
+		$Antispamable->expects($this->at($isSpamCallCount++))->method('isSpam')->will($this->returnValue(false));
 		$this->Comment->afterSave(true);
 		$this->assertEqual($this->Comment->field('is_spam'), 'clean');
 		$this->assertEqual($this->Comment->Article->field('comments'), '1');
 		
-		$Antispamable->expectCallCount('isSpam', $isSpamCallCount);
+		$Antispamable->expects($this->exactly($isSpamCallCount))->method('isSpam');
 	}
 
 /**
@@ -162,7 +170,7 @@ class CommentTest extends CakeTestCase {
  * @return void
  */
 	public function testMarkAsSpam() {
-		$this->Comment->Behaviors->attach('Antispamable');
+		$this->Comment->Behaviors->load('Antispamable');
 		$Antispamable = $this->Comment->Behaviors->Antispamable;
 		
 		$this->assertFalse($this->Comment->markAsSpam('invalid'));
@@ -173,7 +181,7 @@ class CommentTest extends CakeTestCase {
 		$after = $this->Comment->Article->findById(1);
 		$this->assertEqual($after['Article']['comments'], $before['Article']['comments'] - 1);
 		$this->assertEqual($this->Comment->field('is_spam'), 'spammanual');
-		$Antispamable->expectOnce('setSpam');
+		$Antispamable->expects($this->once())->method('setSpam');
 	}
 
 /**
@@ -220,7 +228,7 @@ class CommentTest extends CakeTestCase {
  * @return void
  */
 	public function testMarkAsHam() {
-		$this->Comment->Behaviors->attach('Antispamable');
+		$this->Comment->Behaviors->load('Antispamable');
 		$Antispamable = $this->Comment->Behaviors->Antispamable;
 		
 		$this->assertFalse($this->Comment->markAsHam('invalid'));
@@ -231,7 +239,7 @@ class CommentTest extends CakeTestCase {
 		$after = $this->Comment->Article->findById(2);
 		$this->assertEqual($after['Article']['comments'], $before['Article']['comments'] + 1);
 		$this->assertEqual($this->Comment->field('is_spam'), 'ham');
-		$Antispamable->expectOnce('setHam');
+		$Antispamable->expects($this->once())->method('setHam');
 	}
 	
 /**
@@ -264,7 +272,7 @@ class CommentTest extends CakeTestCase {
 		$comment1 = $this->Comment->findById(1);
 		$this->assertFalse($comment1);
 		$comment2 = $this->Comment->findById(2);
-		$this->assertIsA($comment2, 'Array');
+		$this->assertTrue(is_array($comment2));
 	}
 
 /**

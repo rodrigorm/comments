@@ -28,7 +28,7 @@ if (!class_exists('ArticlesTestController')) {
 	/**
 	 * @var array
 	 */
-		public $components = array('Session', 'Comments.Comments' => array('userModelClass' => 'User'), 'Cookie', 'Auth');
+		public $components = array('Session', 'Comments.Comments' => array('userModelClass' => 'User'), 'Cookie', 'Auth', 'Paginator');
 
 	/**
 	 * Redirect url
@@ -84,7 +84,7 @@ class CommentsComponentTest extends CakeTestCase {
 		if (!defined('FULL_BASE_URL')) {
 			define('FULL_BASE_URL', 'http://');
 		}
-		$this->Controller = new ArticlesTestController();
+		$this->Controller = new ArticlesTestController(new CakeRequest);
 		$this->Controller->constructClasses();
 	}
 
@@ -117,6 +117,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testStartup() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->assertTrue(isset($this->Controller->Article->hasMany['Comment']));
 		$this->Controller->Comments->unbindAssoc = true;
 		$this->Controller->Comments->startup($this->Controller);
@@ -140,8 +141,9 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testBeforeRender() {
-		$this->Controller->action = 'view';
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
+		$this->Controller->request->action = 'view';
 		$this->Controller->Comments->beforeRender();
 		$this->assertTrue(is_array($this->Controller->viewVars['commentParams']));
 		$this->assertEqual($this->Controller->viewVars['commentParams'], array(
@@ -158,6 +160,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_initType() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->Controller->Cookie->delete('Comments.Article');
 		$this->Controller->passedArgs['comment_view_type'] = 'invalid_type';
 		$this->assertEqual($this->Controller->Comments->callback_initType(), 'flat');
@@ -178,6 +181,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_view() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$this->Controller->Comments->callback_view('flat');
 		$this->assertTrue(is_array($this->Controller->viewVars['commentsData']));
@@ -194,7 +198,7 @@ class CommentsComponentTest extends CakeTestCase {
 			$this->Controller->Comments->callback_view('flat');
 			$this->fail();
 		} catch(Exception $e) {
-			$this->pass();
+			// $this->pass();
 		}
 
 		$this->__setupControllerData();
@@ -204,7 +208,7 @@ class CommentsComponentTest extends CakeTestCase {
 			$this->Controller->Comments->callback_view('flat');
 			$this->fail();
 		} catch(Exception $e) {
-			$this->pass();
+			// $this->pass();
 		}
 	}
 
@@ -214,6 +218,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_fetchDataTree() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$result = $this->Controller->Comments->callback_fetchDataTree(array(
 			'id' => 1));
@@ -228,6 +233,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_fetchDataFlat() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$result = $this->Controller->Comments->callback_fetchDataFlat(array(
 			'id' => 1));
@@ -242,6 +248,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_fetchDataThreaded() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$result = $this->Controller->Comments->callback_fetchDataThreaded(array(
 			'id' => 1));
@@ -256,6 +263,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_fetchData() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$result = $this->Controller->Comments->callback_fetchData(array(
 			'id' => 1));
@@ -271,6 +279,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_prepareParams() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->assertEqual($this->Controller->Comments->commentParams, array());
 		$this->Controller->Comments->callback_prepareParams();
 		$expected = array(
@@ -295,6 +304,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_add() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$data = array(
 			'Comment' => array(
 				'title' => 'My first comment <script>XSS</script>',
@@ -344,6 +354,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_add_InAjaxMode() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$data = array(
 			'Comment' => array(
 				'title' => 'My first comment <script>XSS</script>',
@@ -398,6 +409,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_toggleApprove() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$this->Controller->Article->id = 1;
 		$oldCount = $this->Controller->Article->field('comments');
@@ -406,7 +418,7 @@ class CommentsComponentTest extends CakeTestCase {
 			$this->Controller->Comments->callback_toggleApprove(1, 1);
 			$this->fail();
 		} catch (BlackHoleException $e) {
-			$this->pass();
+			// $this->pass();
 		}
 		
 		$this->Controller->passedArgs['comment_action'] = 'toggle_approve';
@@ -414,7 +426,7 @@ class CommentsComponentTest extends CakeTestCase {
 			$this->Controller->Comments->callback_toggleApprove(1, 1);
 			$this->fail();
 		} catch (BlackHoleException $e) {
-			$this->pass();
+			// $this->pass();
 		}
 		
 		$User = ClassRegistry::init('User');
@@ -455,6 +467,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testCallback_delete() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->__setupControllerData();
 		$this->Controller->Article->id = 1;
 		$oldCount = $this->Controller->Article->field('comments');
@@ -479,6 +492,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testFlash() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$message = 'Test Message';
 
 		$this->Controller->params['isAjax'] = false;
@@ -496,6 +510,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testRedirect() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$url = array('controller' => 'tests', 'action' => 'index');
 
 		$this->Controller->params['isAjax'] = false;
@@ -516,6 +531,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testRedirectPersistParams() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		// Here 'comment_action' => 'add' is a named param used internally
 		$this->Controller->passedArgs = array('foo', 'custom' => 'important', 'comment_action' => 'add');
 		$url = array('controller' => 'tests', 'action' => 'index', 'other' => 'value');
@@ -537,6 +553,7 @@ class CommentsComponentTest extends CakeTestCase {
  * @return void
  */
 	public function testPermalink() {
+		$this->Controller->Comments->initialize($this->Controller, array());
 		$this->Controller->params = array(
 			'named' => array(
 				'controller' => 'articles',
@@ -552,11 +569,15 @@ class CommentsComponentTest extends CakeTestCase {
  */
 	protected function __setupControllerData() {
 		$this->Controller->params = array(
+			'named' => array(),
+			'url' => array());
+		$this->Controller->request->params = array(
+			'named' => array(),
 			'url' => array());
 		$this->Controller->Article->id = 1;
 		$this->Controller->viewVars['article'] = array(
 			'Article' => array(
 				'id' => 1));
-		$this->Controller->Comments->controller = $this->Controller;
+		$this->Controller->Comments->Controller = $this->Controller;
 	}
 }

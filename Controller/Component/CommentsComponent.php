@@ -246,7 +246,7 @@ class CommentsComponent extends Component {
  */
 	public function beforeRender() {
 		try {
-			if ($this->enabled && in_array($this->Controller->action, $this->actionNames)) {
+			if ($this->enabled && in_array($this->Controller->request->action, $this->actionNames)) {
 				$type = $this->_call('initType');
 				$this->commentParams = array_merge($this->commentParams, array('displayType' => $type));
 				$this->_call('view', array($type));
@@ -331,7 +331,7 @@ class CommentsComponent extends Component {
 		$paginate = $settings;
 		$paginate['limit'] = 10;
 		$overloadPaginate = !empty($this->Controller->paginate[$this->assocName]) ? $this->Controller->paginate[$this->assocName] : array();		
-		$this->Controller->paginate[$this->assocName] = array_merge($paginate, $overloadPaginate); 
+		$this->Controller->Paginator->settings[$this->assocName] = array_merge($paginate, $overloadPaginate); 
 		$data = $this->Controller->paginate($this->Controller->{$this->modelName}->{$this->assocName});
 		$parents = array();
 		if (isset($data[0][$this->assocName])) {
@@ -352,7 +352,7 @@ class CommentsComponent extends Component {
 	public function callback_fetchDataFlat($options) {
 		$paginate = $this->_prepareModel($options);
 		$overloadPaginate = !empty($this->Controller->paginate['Comment']) ? $this->Controller->paginate['Comment'] : array();		
-		$this->Controller->paginate['Comment'] = array_merge($paginate, $overloadPaginate); 
+		$this->Controller->Paginator->settings['Comment'] = array_merge($paginate, $overloadPaginate); 
 		return $this->Controller->paginate($this->Controller->{$this->modelName}->Comment);
 	}
 
@@ -670,7 +670,7 @@ class CommentsComponent extends Component {
  */
 	function cleanHtml($text, $settings = 'full') {
 		App::import('Helper', 'Comments.Cleaner');
-		$cleaner = & new CleanerHelper();
+		$cleaner = & new CleanerHelper(new View($this->Controller));
 		return $cleaner->clean($text, $settings);
 	}
 }
