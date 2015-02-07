@@ -185,11 +185,11 @@ class CommentsComponent extends Component {
 	protected $_supportNamedParams = array('comment', 'comment_action', 'comment_view_type', 'quote');
 
 /**
- * Constructor. 
+ * Constructor.
  *
  */
 	public function __construct(ComponentCollection $collection, $settings = array()) {
-		parent::__construct($collection, $settings); 
+		parent::__construct($collection, $settings);
 		foreach ($settings as $setting => $value) {
 			if (isset($this->{$setting})) {
 				$this->{$setting} = $value;
@@ -244,7 +244,7 @@ class CommentsComponent extends Component {
  *
  * @return void
  */
-	public function beforeRender() {
+	public function beforeRender(Controller $controller) {
 		try {
 			if ($this->enabled && in_array($this->Controller->request->action, $this->actionNames)) {
 				$type = $this->_call('initType');
@@ -330,8 +330,8 @@ class CommentsComponent extends Component {
 		$settings += array('order' => array($this->assocName . '.lft' => 'asc'));
 		$paginate = $settings;
 		$paginate['limit'] = 10;
-		$overloadPaginate = !empty($this->Controller->paginate[$this->assocName]) ? $this->Controller->paginate[$this->assocName] : array();		
-		$this->Controller->Paginator->settings[$this->assocName] = array_merge($paginate, $overloadPaginate); 
+		$overloadPaginate = !empty($this->Controller->paginate[$this->assocName]) ? $this->Controller->paginate[$this->assocName] : array();
+		$this->Controller->Paginator->settings[$this->assocName] = array_merge($paginate, $overloadPaginate);
 		$data = $this->Controller->paginate($this->Controller->{$this->modelName}->{$this->assocName});
 		$parents = array();
 		if (isset($data[0][$this->assocName])) {
@@ -351,8 +351,8 @@ class CommentsComponent extends Component {
  */
 	public function callback_fetchDataFlat($options) {
 		$paginate = $this->_prepareModel($options);
-		$overloadPaginate = !empty($this->Controller->paginate['Comment']) ? $this->Controller->paginate['Comment'] : array();		
-		$this->Controller->Paginator->settings['Comment'] = array_merge($paginate, $overloadPaginate); 
+		$overloadPaginate = !empty($this->Controller->paginate['Comment']) ? $this->Controller->paginate['Comment'] : array();
+		$this->Controller->Paginator->settings['Comment'] = array_merge($paginate, $overloadPaginate);
 		return $this->Controller->paginate($this->Controller->{$this->modelName}->Comment);
 	}
 

@@ -186,7 +186,7 @@ class CommentableBehavior extends ModelBehavior {
 			}
 
 			if (method_exists($model, 'beforeComment')) {
-				if (!$model->beforeComment(&$data)) {
+				if (!$model->beforeComment($data)) {
 					return false;
 				}
 			}

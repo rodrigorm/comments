@@ -66,7 +66,7 @@ class Comment extends CommentsAppModel {
  * @param boolean $created
  * @return boolean
  */
-	public function beforeSave() {
+	public function beforeSave($options = array()) {
 		if (!isset($this->data[$this->alias]['language'])) {
 			$this->data[$this->alias]['language'] = Configure::read('Config.language');
 		}
@@ -316,7 +316,7 @@ class Comment extends CommentsAppModel {
 		$comment = $this->find('first', array(
 			'recursive' => -1,
 			'conditions' => array('id' => $id)));
-		
+
 		if (isset($comment[$this->alias]['model'])) {
 			$Model = ClassRegistry::init($comment[$this->alias]['model']);
 			if (!empty($Model)) {
